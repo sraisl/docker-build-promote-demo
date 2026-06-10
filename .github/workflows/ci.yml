@@ -50,7 +50,7 @@ jobs:
       - name: Prüfen, ob Image für diesen Content-Hash existiert
         id: check
         if: github.event_name == 'push'
-        uses: tyriis/docker-image-tag-exists@v2.2.0
+        uses: tyriis/docker-image-tag-exists@v2.1.0
         with:
           registry: ghcr.io
           repository: ${{ env.IMAGE_REPO }}
