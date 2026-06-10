@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v20[0-9][0-9].0[1-9].[0-9]*"
+      - "v20[0-9][0-9].1[0-2].[0-9]*"
+
+jobs:
+  promote:
+    name: Snapshot zu Release promoten
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image-Repository ableiten
+        run: echo "IMAGE_REPO=${GITHUB_REPOSITORY_OWNER,,}/foo-image" >> "$GITHUB_ENV"
+
+      - name: Bei GHCR anmelden
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prüfen, ob Snapshot-Image für diesen Content-Hash existiert
+        id: check
+        uses: tyriis/docker-image-tag-exists@v2.1.0
+        with:
+          registry: ghcr.io
+          repository: ${{ env.IMAGE_REPO }}
+          tag: sha-${{ hashFiles('Dockerfile', '.dockerignore', 'app/**') }}
+
+      - name: Abbrechen, wenn kein Image vorhanden ist
+        if: steps.check.outputs.tag != 'found'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.setFailed(
+              `Kein Image ghcr.io/${process.env.IMAGE_REPO}:sha-${{ hashFiles('Dockerfile', '.dockerignore', 'app/**') }} gefunden. ` +
+              'Der CI-Workflow muss für diesen Stand zuerst erfolgreich gelaufen sein.'
+            )
+
+      - name: Image registry-seitig retaggen (ohne Pull/Push der Layer)
+        uses: akhilerm/tag-push-action@v2.1.0
+        with:
+          src: ghcr.io/${{ env.IMAGE_REPO }}:sha-${{ hashFiles('Dockerfile', '.dockerignore', 'app/**') }}
+          dst: |
+            ghcr.io/${{ env.IMAGE_REPO }}:${{ github.ref_name }}
+            ghcr.io/${{ env.IMAGE_REPO }}:latest
