@@ -14,13 +14,13 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Image-Repository ableiten
         run: echo "IMAGE_REPO=${GITHUB_REPOSITORY_OWNER,,}/foo-image" >> "$GITHUB_ENV"
 
       - name: Bei GHCR anmelden
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -36,7 +36,7 @@ jobs:
 
       - name: Abbrechen, wenn kein Image vorhanden ist
         if: steps.check.outputs.tag != 'found'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             core.setFailed(
@@ -45,7 +45,7 @@ jobs:
             )
 
       - name: Image registry-seitig retaggen (ohne Pull/Push der Layer)
-        uses: akhilerm/tag-push-action@v2.1.0
+        uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/${{ env.IMAGE_REPO }}:sha-${{ hashFiles('Dockerfile', '.dockerignore', 'app/**') }}
           dst: |
